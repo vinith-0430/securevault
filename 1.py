@@ -3,9 +3,11 @@ import json
 import hashlib
 import os
 from cryptography.fernet import Fernet
+
 # 1. KEY + SALT MANAGEMENT
 KEY_FILE = "secret.key"
 SALT_FILE = "salt.key"
+
 # --- Encryption Key ---
 if not os.path.exists(KEY_FILE):
     key = Fernet.generate_key()
@@ -15,6 +17,7 @@ else:
     with open(KEY_FILE, "rb") as f:
         key = f.read()
 cipher = Fernet(key)
+
 # --- Salt ---
 if not os.path.exists(SALT_FILE):
     salt = os.urandom(16)
@@ -23,11 +26,13 @@ if not os.path.exists(SALT_FILE):
 else:
     with open(SALT_FILE, "rb") as f:
         salt = f.read()
+
 # 2. TRAPDOOR FUNCTION (Salted)
 def get_trapdoor(word, secret_key, salt):
     normalized = word.lower().strip().encode()
     data = secret_key + salt + normalized
     return hashlib.sha256(data).hexdigest()
+
 # 3. DATABASE + ENCRYPTION
 def initialize_and_store():
     conn = sqlite3.connect('encrypted_vault.db')
@@ -73,13 +78,14 @@ def initialize_and_store():
         encrypted_blob = cipher.encrypt(json.dumps(person).encode())
         cursor.execute("INSERT INTO data_store (payload) VALUES (?)", (encrypted_blob,))
         row_id = cursor.lastrowid
-        #terms = person['name'].split() + [person['acc_no']]+[person['balance']]
-        terms = person['name'].split() + [person['acc_no']]
+        terms = person['name'].split() + [person['acc_no']]+[person['balance']]
+        #terms = person['name'].split() + [person['acc_no']]
         for term in set(terms):
             td = get_trapdoor(term, key, salt)
             cursor.execute("INSERT INTO search_index (trapdoor, data_id) VALUES (?, ?)", (td, row_id))
     conn.commit()
     return conn
+
 # 4. SEARCH FUNCTION
 def search_db(query, conn):
     cursor = conn.cursor()
@@ -132,7 +138,7 @@ def hacker_attack_simulation():
 
 if __name__ == "__main__":
     db_connection = initialize_and_store()
-    hacker_attack_simulation()
+    #hacker_attack_simulation()
 
     try:
         while True:
